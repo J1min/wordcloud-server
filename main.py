@@ -1,19 +1,23 @@
 from fastapi import FastAPI, Response
+from fastapi.middleware.cors import CORSMiddleware
+
 from wordcloud import WordCloud
-import matplotlib.pyplot as plt
-import io
-import os
-import boto3
-import uuid
-from interface import schemas, model
 from dotenv import load_dotenv
+from boto3 import client
+from io import BytesIO
+from os import environ
+from uuid import uuid4
+
+import matplotlib.pyplot as plt
+
+from interface import schemas, model
 
 app = FastAPI()
 load_dotenv()
 
-AWS_BUCKET_NAME = os.environ.get('AWS_BUCKET_NAME')
-AWS_ACCESS_KEY = os.environ.get('AWS_ACCESS_KEY')
-AWS_SECRET_KEY = os.environ.get('AWS_SECRET_KEY')
+AWS_BUCKET_NAME = environ.get('AWS_BUCKET_NAME')
+AWS_ACCESS_KEY = environ.get('AWS_ACCESS_KEY')
+AWS_SECRET_KEY = environ.get('AWS_SECRET_KEY')
 
 app.add_middleware(
     CORSMiddleware,
@@ -24,7 +28,7 @@ app.add_middleware(
 )
 
 
-boto3_client = boto3.client(
+boto3_client = client(
     "s3",
     aws_access_key_id=AWS_ACCESS_KEY,
     aws_secret_access_key=AWS_SECRET_KEY
@@ -41,7 +45,7 @@ async def create_wordcloud(body: schemas.wordcloud):
                           height=512).generate(body.content)
 
     wordcloud_image = wordcloud.to_image().convert('RGB')
-    image_byte = io.BytesIO()
+    image_byte = BytesIO()
 
     wordcloud_image.save(image_byte, format='PNG')
     image_byte.seek(0)
@@ -50,7 +54,7 @@ async def create_wordcloud(body: schemas.wordcloud):
     plt.axis("off")
     plt.close()
 
-    random_uuid = uuid.uuid4()
+    random_uuid = uuid4()
     file_name = f'{random_uuid}.png'
     boto3_client.upload_fileobj(image_byte, AWS_BUCKET_NAME, file_name)
 
