@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 
+from konlpy.tag import Okt
 from wordcloud import WordCloud
 from dotenv import load_dotenv
 from boto3 import client
@@ -35,14 +36,25 @@ boto3_client = client(
 )
 
 
-@app.post("/wordcloud")
-async def create_wordcloud(body: schemas.wordcloud):
+def filter_noun_adjective(content: str):
+    return content
+#     komoran = Okt()
+#     pos_content = komoran.pos(content)
+#     filtered_words = []
+#     for word, pos in pos_content:
+#         if pos in ['Noun', 'Adjective']:
+#             filtered_words.append(word)
+#    return filtered_words
 
+
+@app.patch("/wordcloud")
+async def create_wordcloud(body: schemas.wordcloud):
+    filtered_content = filter_noun_adjective(body.content)
     wordcloud = WordCloud(font_path='./font/Pretendard-Medium.otf',  # 글꼴 설정
                           background_color='white',
                           max_words=16,
                           width=512,
-                          height=512).generate(body.content)
+                          height=512).generate(filtered_content)
 
     wordcloud_image = wordcloud.to_image().convert('RGB')
     image_byte = BytesIO()
@@ -60,7 +72,7 @@ async def create_wordcloud(body: schemas.wordcloud):
 
     return {
         "message": "Wordcloud created and uploaded to S3!",
-        "url": f"http://leehj050211.kro.kr:8001/wordcloud/{random_uuid}.png"
+        "url": f"http://localhost:8000/wordcloud/{random_uuid}.png"
     }
 
 
@@ -69,6 +81,5 @@ def get_file(file_name: str):
     response = boto3_client.get_object(
         Bucket=AWS_BUCKET_NAME,
         Key=file_name)
-
     file_data = response["Body"].read()
     return Response(content=file_data, media_type="image/png")
