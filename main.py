@@ -15,6 +15,14 @@ AWS_BUCKET_NAME = os.environ.get('AWS_BUCKET_NAME')
 AWS_ACCESS_KEY = os.environ.get('AWS_ACCESS_KEY')
 AWS_SECRET_KEY = os.environ.get('AWS_SECRET_KEY')
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 boto3_client = boto3.client(
     "s3",
@@ -31,13 +39,12 @@ async def create_wordcloud(body: schemas.wordcloud):
                           max_words=16,
                           width=512,
                           height=512).generate(body.content)
-    print(body.content)
 
-    image = wordcloud.to_image().convert('RGB')
-    image_stream = io.BytesIO()
+    wordcloud_image = wordcloud.to_image().convert('RGB')
+    image_byte = io.BytesIO()
 
-    image.save(image_stream, format='PNG')
-    image_stream.seek(0)
+    wordcloud_image.save(image_byte, format='PNG')
+    image_byte.seek(0)
 
     plt.imshow(wordcloud, interpolation='bilinear')
     plt.axis("off")
@@ -45,7 +52,7 @@ async def create_wordcloud(body: schemas.wordcloud):
 
     random_uuid = uuid.uuid4()
     file_name = f'{random_uuid}.png'
-    boto3_client.upload_fileobj(image_stream, AWS_BUCKET_NAME, file_name)
+    boto3_client.upload_fileobj(image_byte, AWS_BUCKET_NAME, file_name)
 
     return {
         "message": "Wordcloud created and uploaded to S3!",
@@ -56,7 +63,8 @@ async def create_wordcloud(body: schemas.wordcloud):
 @app.get("/wordcloud/{file_name}")
 def get_file(file_name: str):
     response = boto3_client.get_object(
-        Bucket=AWS_BUCKET_NAME, Key='wordcloud.png')
-    file_data = response["Body"].read()
+        Bucket=AWS_BUCKET_NAME,
+        Key=file_name)
 
+    file_data = response["Body"].read()
     return Response(content=file_data, media_type="image/png")
