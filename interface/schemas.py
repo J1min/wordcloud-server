@@ -6,3 +6,10 @@ class wordcloud(BaseModel):
 
     class Config:
         orm_mode: True
+
+
+class photo(BaseModel):
+    photo_url: str
+
+    class Config:
+        orm_mode: True

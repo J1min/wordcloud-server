@@ -43,22 +43,3 @@ def put_board(body: schemas.wordcloud, db: Session = Depends(db_util.get_db)):
 
     return {"response": wordcloud_data}
 
-
-def upload_file(fileName, file):
-    s3 = boto3.resource("s3")
-    s3.Bucket('wordcloud-storage').put_object(
-        Key=fileName, Body=file, ContentType="image/jpeg")
-    return
-
-
-@app.post("/photo")  # 사진 post
-async def upload_photo(file: UploadFile, db: Session = Depends(db_util.get_db)):
-    content = await file.read()
-    href = f"{str(uuid.uuid4())}.jpeg"  # uuid로 유니크한 파일명으로 변경
-    upload_file(href, content)
-
-    quote_data = model.quote(
-        quote_content=body.quote_content, character_name=body.character_name)
-    db_util.post_db(db, quote_data)
-
-    return photoData
