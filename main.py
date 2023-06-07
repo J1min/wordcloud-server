@@ -60,7 +60,7 @@ async def create_wordcloud(body: schemas.wordcloud):
 
     return {
         "message": "Wordcloud created and uploaded to S3!",
-        "url": f"http://localhost:8000/wordcloud/{random_uuid}.png"
+        "url": f"http://leehj050211.kro.kr:8001/wordcloud/{random_uuid}.png"
     }
 
 
