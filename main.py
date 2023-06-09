@@ -10,6 +10,7 @@ from os import environ
 from uuid import uuid4
 
 import matplotlib.pyplot as plt
+from PyKomoran import *
 
 from interface import schemas, model
 
@@ -37,14 +38,12 @@ boto3_client = client(
 
 
 def filter_noun_adjective(content: str):
+    content = content.replace('안녕하세요', '').replace('반갑습니다', '')
     return content
-#     komoran = Okt()
-#     pos_content = komoran.pos(content)
-#     filtered_words = []
-#     for word, pos in pos_content:
-#         if pos in ['Noun', 'Adjective']:
-#             filtered_words.append(word)
-#    return filtered_words
+    # komoran = Komoran()
+    # filtered_words = komoran.get_morphes_by_tags(
+    #     content, tag_list=['NNP', 'NNG'])
+    # return filtered_words
 
 
 @app.patch("/wordcloud")
