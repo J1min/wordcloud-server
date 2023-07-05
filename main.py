@@ -1,3 +1,5 @@
+from fastapi.responses import FileResponse
+import os
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -30,55 +32,34 @@ app.add_middleware(
 )
 
 
-boto3_client = client(
-    "s3",
-    aws_access_key_id=AWS_ACCESS_KEY,
-    aws_secret_access_key=AWS_SECRET_KEY
-)
-
-
-def filter_noun_adjective(content: str):
-    content = content.replace('안녕하세요', '').replace('반갑습니다', '')
-    return content
-    # komoran = Komoran()
-    # filtered_words = komoran.get_morphes_by_tags(
-    #     content, tag_list=['NNP', 'NNG'])
-    # return filtered_words
+SAVE_DIR = "./wordcloud_images"
 
 
 @app.patch("/wordcloud")
 async def create_wordcloud(body: schemas.wordcloud):
-    filtered_content = filter_noun_adjective(body.content)
-    wordcloud = WordCloud(font_path='./font/Pretendard-Medium.otf',  # 글꼴 설정
+
+    random_uuid = uuid4()
+    file_name = f'{random_uuid}.png'
+    local_file_path = os.path.join(SAVE_DIR, file_name)
+
+    wordcloud = WordCloud(font_path='./font/Pretendard-Medium.otf',
                           background_color='white',
                           max_words=16,
                           width=512,
-                          height=512).generate(filtered_content)
+                          height=512).generate(body.content)
 
     wordcloud_image = wordcloud.to_image().convert('RGB')
     image_byte = BytesIO()
 
-    wordcloud_image.save(image_byte, format='PNG')
-    image_byte.seek(0)
-
-    plt.imshow(wordcloud, interpolation='bilinear')
-    plt.axis("off")
-    plt.close()
-
-    random_uuid = uuid4()
-    file_name = f'{random_uuid}.png'
-    boto3_client.upload_fileobj(image_byte, AWS_BUCKET_NAME, file_name)
+    wordcloud_image.save(local_file_path, format='PNG')
 
     return {
-        "message": "Wordcloud created and uploaded to S3!",
-        "url": f"http://localhost:8000/wordcloud/{random_uuid}.png"
+        "message": "Wordcloud created and saved locally!",
+        "url": f"http://192.168.10.253:8001/wordcloud/{random_uuid}.png"
     }
 
 
 @app.get("/wordcloud/{file_name}")
 def get_file(file_name: str):
-    response = boto3_client.get_object(
-        Bucket=AWS_BUCKET_NAME,
-        Key=file_name)
-    file_data = response["Body"].read()
-    return Response(content=file_data, media_type="image/png")
+    local_file_path = os.path.join(SAVE_DIR, file_name)
+    return FileResponse(local_file_path, media_type="image/png")
